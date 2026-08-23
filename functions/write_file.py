@@ -1,6 +1,28 @@
 import os
 from functions.get_valid_path import get_valid_path
 
+schema_write_file = {
+    "type": "function",
+    "function": {
+        "name": "write_file",
+        "description": "Writes content to a file relative to the working directory",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "file_path": {
+                    "type": "string",
+                    "description": "Path to the file to write, relative to the working directory",
+                },
+                "content": {
+                    "type": "string",
+                    "description": "Content to write to the file",
+                },
+            },
+            "required": ["file_path", "content"],
+        },
+    },
+}
+
 def write_file(working_directory, file_path, content):
     try:
         full_path = get_valid_path(working_directory, file_path)
