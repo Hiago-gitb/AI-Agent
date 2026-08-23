@@ -1,24 +1,26 @@
 import os
+import argparse
+import sys
 from dotenv import load_dotenv
 from openai import OpenAI
-import argparse
 from prompts import system_prompt
 from functions.call_function import available_functions, call_function
-import json
+
 
 load_dotenv()
-# Read the OpenRouter key from the environment file.
-api_key = os.environ.get("OPENROUTER_API_KEY")
-if not api_key or api_key == None:
-    raise RuntimeError("Error with API key, check it")
 
-# Configure the OpenAI client to send requests through OpenRouter.
+# Load the API key from the environment.
+api_key = os.environ.get("NVIDIA_API_KEY")
+if not api_key or api_key == None:
+    raise RuntimeError("NVIDIA_API_KEY is not set. Check your .env file.")
+
+# Configure the NVIDIA API client through the OpenAI SDK.
 client = OpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=api_key,
+  base_url = "https://integrate.api.nvidia.com/v1",
+  api_key = api_key,
 )
 
-# Accept the user's message as a command-line argument.
+# Parse the user's prompt and optional command-line arguments.
 parser = argparse.ArgumentParser(description="Chatbot")
 parser.add_argument("user_prompt", type=str, help="Error in prompt, try again")
 parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
@@ -29,33 +31,43 @@ messages = [
     {"role": "user", "content": args.user_prompt},
 ]
 
-# Send the prompt to the selected chat model.
-response = client.chat.completions.create(
-    model = "openrouter/free",
-    messages = messages,
-    tools=available_functions,
-)
+# Allow the model to call tools and continue processing their results.
+for i in range(20):
+    response = client.chat.completions.create(
+        model="nvidia/nemotron-3-super-120b-a12b",
+        messages = messages,
+        tools=available_functions,
+    )
 
-# Stop if the API did not return token usage data.
-if response.usage == None:
-    raise RuntimeError("Failed API request")
+    if response.usage == None:
+        raise RuntimeError("The API request failed: no usage information was returned.")
 
-# Display the prompt, usage details, and generated reply.
-message = response.choices[0].message
-if message.tool_calls is not None:
+    message = response.choices[0].message
+    messages.append(message.model_dump())
+
+    # Stop when the model provides a final response without tool calls.
+    if not message.tool_calls:
+        break
+
     for tool_call in message.tool_calls:
         result_message = call_function(tool_call, args.verbose)
-if result_message == None:
-    raise Exception("Error in tool, try again")
 
+        if result_message is None:
+            raise Exception("The tool call failed to return a result.")
+
+        messages.append(result_message)
+
+else:
+    print("Maximum number of iterations reached. The model did not produce a final response.")
+    sys.exit(1)
+
+# Display token usage and the response when verbose mode is enabled.
 if args.verbose:
     print(f"User prompt: {args.user_prompt}")
     print(f"Prompt tokens: {response.usage.prompt_tokens}\nResponse tokens: {response.usage.completion_tokens}")
-    print(f"-> {result_message['content']}")
-    if response.choices[0].message.content != None:
-        print(f"Response:\n{response.choices[0].message.content}")
+    if message.content != None:
+        print(f"Response:\n{message.content}")
 
 else:
-    print(f"-> {result_message}")
-    if response.choices[0].message.content != None:
-        print(f"Response:\n{response.choices[0].message.content}")
+    if message.content != None:
+        print(f"Response:\n{message.content}")

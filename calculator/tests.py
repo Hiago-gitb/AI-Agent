@@ -2,9 +2,8 @@
 
 import unittest
 from pkg.calculator import Calculator
-
-
 class TestCalculator(unittest.TestCase):
+    # Create a fresh calculator instance before each test.
     def setUp(self) -> None:
         self.calculator = Calculator()
 
@@ -37,13 +36,14 @@ class TestCalculator(unittest.TestCase):
         self.assertIsNone(result)
 
     def test_invalid_operator(self) -> None:
+        # Verify that unsupported operators raise a ValueError.
         with self.assertRaises(ValueError):
             self.calculator.evaluate("$ 3 5")
 
     def test_not_enough_operands(self) -> None:
+        # Verify that incomplete expressions raise a ValueError.
         with self.assertRaises(ValueError):
             self.calculator.evaluate("+ 3")
-
 
 if __name__ == "__main__":
     unittest.main()

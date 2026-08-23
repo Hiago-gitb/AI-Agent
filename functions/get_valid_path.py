@@ -1,9 +1,13 @@
+# functions/get_valid_path.py
+
 import os
 
 def get_valid_path(working_directory, path):
+    # Resolve both paths to absolute paths before validating them.
     working_dir_abs = os.path.abspath(working_directory)
     full_path = os.path.abspath(os.path.join(working_dir_abs, path))
 
+    # Reject paths that escape the permitted working directory.
     if os.path.commonpath([working_dir_abs, full_path]) != working_dir_abs:
         return None
 

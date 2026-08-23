@@ -1,7 +1,10 @@
+# functions/run_python_file.py
+
 import os
 import subprocess
 from functions.get_valid_path import get_valid_path
 
+# Define the tool schema used by the model to execute Python files.
 schema_run_python_file = {
     "type": "function",
     "function": {
@@ -32,18 +35,24 @@ def run_python_file(working_directory, file_path, args: list[str] | None = None)
         full_path = get_valid_path(working_directory, file_path)
         output = ""
 
+        # Prevent execution of files outside the permitted working directory.
         if full_path is None:
             return f'Error: Cannot execute "{file_path}" as it is outside the permitted working directory'
 
         if not os.path.isfile(full_path) and not os.path.isdir(full_path):
             return f'Error: "{file_path}" does not exist or is not a regular file'
 
+        # Only allow Python files to be executed.
         if not file_path.endswith(".py"):
             return f'Error: "{file_path}" is not a Python file'
             
         command = ["python", full_path]
+
+        # Pass optional arguments to the Python script.
         if args:
             command.extend(args)
+
+        # Run the script with captured output and a time limit.
         result = subprocess.run(command, cwd=working_directory, capture_output=True, text=True, timeout=30)
 
         if result.returncode != 0:

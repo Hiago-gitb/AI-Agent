@@ -1,6 +1,9 @@
+# functions/write_file.py
+
 import os
 from functions.get_valid_path import get_valid_path
 
+# Define the tool schema used by the model to write file contents.
 schema_write_file = {
     "type": "function",
     "function": {
@@ -27,11 +30,13 @@ def write_file(working_directory, file_path, content):
     try:
         full_path = get_valid_path(working_directory, file_path)
 
+        # Prevent writing to files outside the permitted working directory.
         if full_path is None:
             return f'Error: Cannot write to "{file_path}" as it is outside the permitted working directory'
         if os.path.isdir(full_path):
             return f'Error: Cannot write to "{file_path}" as it is a directory'
         
+        # Create any missing parent directories before writing the file.
         parent_dir = os.path.dirname(full_path)
         os.makedirs(parent_dir, exist_ok=True)
 

@@ -1,6 +1,9 @@
+# functions/get_file_content.py
+
 import os
 from functions.get_valid_path import get_valid_path
 
+# Define the tool schema used by the model to read file contents.
 schema_get_file_content = {
     "type": "function",
     "function": {
@@ -21,9 +24,11 @@ schema_get_file_content = {
 
 def get_file_content(working_directory, file_path):
     try:
+        # Limit the amount of file content returned to the model.
         MAX_CHARS = 10000
         full_path = get_valid_path(working_directory, file_path)
 
+        # Prevent access to files outside the permitted directory.
         if full_path is None:
             return f'Error: cannot read "{file_path}" as it is outside the permitted working directory'
         if not os.path.isfile(full_path):
@@ -31,6 +36,8 @@ def get_file_content(working_directory, file_path):
             
         with open(full_path, mode="r") as f:
             content = f.read(MAX_CHARS)
+
+            # Indicate when the file contains more content than the limit.
             if f.read(1):
                 content += f'[...File "{file_path}" truncated at {MAX_CHARS} characters]'
 
