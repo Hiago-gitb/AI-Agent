@@ -18,6 +18,7 @@ client = OpenAI(
 # Accept the user's message as a command-line argument.
 parser = argparse.ArgumentParser(description="Chatbot")
 parser.add_argument("user_prompt", type=str, help="Error in prompt, try again")
+parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
 args = parser.parse_args()
 
 messages = [
@@ -35,6 +36,7 @@ if response.usage == None:
     raise RuntimeError("Failed API request")
 
 # Display the prompt, usage details, and generated reply.
-print(f"User prompt: {args.user_prompt}")
-print(f"Prompt tokens: {response.usage.prompt_tokens}\nResponse tokens: {response.usage.completion_tokens}")
+if args.verbose:
+    print(f"User prompt: {args.user_prompt}")
+    print(f"Prompt tokens: {response.usage.prompt_tokens}\nResponse tokens: {response.usage.completion_tokens}")
 print(f"Response:\n{response.choices[0].message.content}")
