@@ -4,19 +4,21 @@ A small Python AI agent that can interact with a local project through tool call
 
 The agent can inspect files, read file contents, create or update files, and run Python files inside a permitted working directory. It also includes a simple calculator project used as the agent's working environment and for testing the tools.
 
-The project currently uses NVIDIA's API by default, but it can also be configured to use OpenRouter.
+The project supports multiple LLM providers through a simple provider abstraction. NVIDIA is used by default, but OpenRouter can also be selected without changing the agent code.
 
 ## Features
 
 - Chat with an LLM from the command line
 - Function/tool calling
+- Multiple LLM providers
+- Switch providers through environment variables
 - List files and directories
 - Read file contents
 - Write and create files
 - Run Python files
 - Restrict file operations to the configured working directory
 - Limit file reads to avoid returning extremely large files
-- Optional verbose tool-call output
+- Optional verbose output
 - Simple calculator with operator precedence
 - Tests for the calculator and agent tools
 
@@ -39,6 +41,12 @@ The project currently uses NVIDIA's API by default, but it can also be configure
 │   ├── get_valid_path.py
 │   ├── run_python_file.py
 │   └── write_file.py
+│
+├── providers/
+│   ├── base.py
+│   ├── factory.py
+│   ├── nvidia.py
+│   └── openrouter.py
 │
 ├── tests/
 │   ├── test_get_file_content.py
@@ -63,7 +71,14 @@ The project currently uses NVIDIA's API by default, but it can also be configure
 
 ## Installation
 
-Clone the repository and install the dependencies with `uv`:
+Clone the repository:
+
+```bash
+git clone https://github.com/Hiago-gitb/AI-Agent.git
+cd AI-Agent
+```
+
+Install the dependencies with `uv`:
 
 ```bash
 uv sync
@@ -81,19 +96,38 @@ On Windows PowerShell:
 Copy-Item .env.example .env
 ```
 
-Then add your API key to `.env`.
+Then open `.env` and configure your provider and API key.
 
-## API Providers
+## Configuration
 
-The project uses the OpenAI Python SDK, so both NVIDIA and OpenRouter can be used with the same basic client structure.
+The provider and model are configured through environment variables.
 
-### NVIDIA
+Your `.env` file can look like this:
 
-NVIDIA provides an OpenAI-compatible API endpoint at:
+```env
+LLM_PROVIDER=nvidia
+LLM_MODEL=nvidia/nemotron-3-super-120b-a12b
 
-```text
-https://integrate.api.nvidia.com/v1
+NVIDIA_API_KEY=nvapi-your-key-here
+OPENROUTER_API_KEY=
 ```
+
+### Available providers
+
+The project currently supports:
+
+- `nvidia`
+- `openrouter`
+
+If `LLM_PROVIDER` is not set, NVIDIA is used by default.
+
+The provider is selected automatically when the agent starts. You do not need to change the Python code.
+
+---
+
+## NVIDIA
+
+NVIDIA provides an OpenAI-compatible API that can be used by the agent without changing the tool-calling system.
 
 The project currently uses:
 
@@ -101,154 +135,192 @@ The project currently uses:
 nvidia/nemotron-3-super-120b-a12b
 ```
 
-NVIDIA's model page provides a `Generate API Key` option and uses the same OpenAI-compatible base URL shown above.
+Get an API key from the NVIDIA API Catalog:
 
-Get your key from the NVIDIA API Catalog:
+[NVIDIA API Catalog](https://build.nvidia.com/?utm_source=chatgpt.com)
 
-https://build.nvidia.com/
-
-Add it to `.env`:
+Add it to your `.env`:
 
 ```env
+LLM_PROVIDER=nvidia
+LLM_MODEL=nvidia/nemotron-3-super-120b-a12b
+
 NVIDIA_API_KEY=nvapi-your-key-here
 ```
 
-The current `main.py` reads this variable:
+The NVIDIA provider handles the API endpoint and authentication separately from the agent itself.
 
-```python
-api_key = os.environ.get("NVIDIA_API_KEY")
-```
+---
 
-NVIDIA's hosted API documentation and model examples are available in the [NVIDIA API Catalog](https://build.nvidia.com/) and [NVIDIA documentation](https://docs.nvidia.com/).
+## OpenRouter
 
-#### Free Tier Limits
+OpenRouter provides access to many different models through an OpenAI-compatible API.
 
-The free tier on `build.nvidia.com` is intended for prototyping and experimentation, not production.
-
-| Limit                     | Value                                     |
-| ------------------------- | ----------------------------------------- |
-| Requests per minute (RPM) | ~40 RPM per model (community baseline)    |
-| Free credits              | ~1,000 on signup; up to ~5,000 by request |
-| Token limit per model     | Not published by NVIDIA                   |
-| Credit card required      | No                                        |
-| RPM upgrade available     | Yes, by request (up to ~200 RPM)          |
-
-A few things worth knowing:
-
-- The 40 RPM ceiling is a community-acknowledged baseline. NVIDIA does not publish a hard SLA for the free tier, so the actual limit can vary by model and overall traffic.
-- Credits are consumed per request. Lightweight models use a fraction of a credit; large models use more. Once your credits run out you will start getting `429 Too Many Requests` errors.
-- NVIDIA does not publish per-model token limits for the hosted API. If you hit an undocumented limit it will also come back as a 429.
-- You can request additional credits or a rate limit increase through the [NVIDIA Developer Forums](https://forums.developer.nvidia.com/). Results vary, so treat this as a best-effort process.
-- For unlimited usage, NVIDIA AI Enterprise or one of the hosted NIM providers (Together AI, Baseten, Fireworks) are the options to look into.
-
-### OpenRouter
-
-OpenRouter is useful if you want to switch between many models and providers without changing the rest of the API integration. Its API is OpenAI-compatible and uses:
+The project can use:
 
 ```text
-https://openrouter.ai/api/v1
+openrouter/free
 ```
 
-Create an API key from:
+as a convenient free-model router.
 
-https://openrouter.ai/keys
+Get an API key from:
 
-Add it to `.env`:
+[OpenRouter API Keys](https://openrouter.ai/keys?utm_source=chatgpt.com)
+
+Then configure `.env`:
 
 ```env
+LLM_PROVIDER=openrouter
+LLM_MODEL=openrouter/free
+
+NVIDIA_API_KEY=
 OPENROUTER_API_KEY=sk-or-v1-your-key-here
 ```
 
-OpenRouter model names normally follow the format:
+You can also choose another OpenRouter model.
 
-```text
-provider/model
-```
+Check the available models here:
 
-For example:
+[OpenRouter Models](https://openrouter.ai/models?utm_source=chatgpt.com)
 
-```text
-openai/gpt-4o-mini
-```
+When choosing a model, make sure it supports tool/function calling, since the agent relies on this feature.
 
-Always check the current model list before choosing a model:
-
-https://openrouter.ai/models
-
-#### Free Tier Limits
-
-OpenRouter has two kinds of models: free models (IDs ending in `:free`) and paid models billed per token.
-
-| Limit                     | Free account         | After one-time $10 purchase |
-| ------------------------- | -------------------- | --------------------------- |
-| Requests per minute (RPM) | 20 RPM               | 20 RPM (unchanged)          |
-| Requests per day          | 50 req/day           | 1,000 req/day               |
-| Cost per token            | $0 on `:free` models | $0 on `:free` models        |
-| Credit card required      | No                   | No (credits never expire)   |
-
-A few things worth knowing:
-
-- The 20 RPM cap is fixed regardless of your credit balance. Purchasing credits only raises the daily request ceiling from 50 to 1,000.
-- Free models rotate. A model listed as `:free` today may move to paid without notice as providers adjust their capacity. Always verify at [openrouter.ai/models](https://openrouter.ai/models) before committing to a specific model ID.
-- Paid models are billed per input and output token. Pricing varies widely by model and provider. Check the catalog page for each model to see its current rate.
-- When any limit is exceeded the API returns HTTP `429 Too Many Requests`. The per-minute window resets after 60 seconds; the daily window resets at midnight UTC.
-- If you do not want to track which free models are currently available, OpenRouter offers `openrouter/free` as a meta-model that automatically routes your request to a suitable free model based on what the request requires (tool calling, image input, and so on). You trade control over the exact model for stability as the free catalog changes.
+---
 
 ## Switching Providers
 
-The provider is currently configured directly in `main.py`.
+One of the main features of the project is that providers can be switched without modifying the agent code.
 
-### From NVIDIA to OpenRouter
+### Use NVIDIA
 
-Change the API key variable:
+```env
+LLM_PROVIDER=nvidia
+LLM_MODEL=nvidia/nemotron-3-super-120b-a12b
 
-```python
-api_key = os.environ.get("OPENROUTER_API_KEY")
+NVIDIA_API_KEY=nvapi-your-key-here
+OPENROUTER_API_KEY=
 ```
 
-Change the base URL:
+### Use OpenRouter
 
-```python
-client = OpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=api_key,
-)
+```env
+LLM_PROVIDER=openrouter
+LLM_MODEL=openrouter/free
+
+NVIDIA_API_KEY=
+OPENROUTER_API_KEY=sk-or-v1-your-key-here
 ```
 
-Then change the model to a model available on OpenRouter:
+That's it.
 
-```python
-model="provider/model-name"
+The agent reads `LLM_PROVIDER` and creates the corresponding provider automatically.
+
+## Provider Architecture
+
+The project uses a small abstraction to keep provider-specific code separate from the agent logic.
+
+```text
+                    Agent
+                      |
+                      v
+                LLMProvider
+                      |
+             +--------+--------+
+             |                 |
+             v                 v
+          NVIDIA          OpenRouter
 ```
 
-For example:
+`LLMProvider` defines the interface that each provider must implement.
+
+The provider factory then selects the correct implementation:
+
+```text
+.env
+ |
+ | LLM_PROVIDER=nvidia
+ |
+ v
+create_provider()
+ |
+ v
+NVIDIAProvider
+```
+
+or:
+
+```text
+.env
+ |
+ | LLM_PROVIDER=openrouter
+ |
+ v
+create_provider()
+ |
+ v
+OpenRouterProvider
+```
+
+This means the agent does not need to know which API it is using.
+
+The agent simply calls:
 
 ```python
-response = client.chat.completions.create(
-    model="provider/model-name",
+response = provider.generate(
     messages=messages,
     tools=available_functions,
 )
 ```
 
-You do not need to rewrite the tool-calling system just because you changed providers. The important parts are the API key, base URL, and model.
+This makes it easier to add more providers in the future without changing the agent loop.
 
-### From OpenRouter back to NVIDIA
+## How the Agent Works
 
-Use:
+The agent follows a simple tool-calling loop:
 
-```python
-api_key = os.environ.get("NVIDIA_API_KEY")
+```text
+User prompt
+     |
+     v
+    Agent
+     |
+     v
+ LLM Provider
+     |
+     v
+Model decides whether a tool is needed
+     |
+     v
+Tool execution
+     |
+     v
+Tool result
+     |
+     v
+ LLM Provider
+     |
+     v
+Final response
 ```
 
-```python
-client = OpenAI(
-    base_url="https://integrate.api.nvidia.com/v1",
-    api_key=api_key,
-)
+For example, if you ask:
+
+```text
+Read the contents of calculator/pkg/calculator.py
 ```
 
-Then select an NVIDIA model available through the NVIDIA API Catalog.
+the model can decide to call:
+
+```text
+get_file_content
+```
+
+The tool executes the operation and returns the result to the model.
+
+The model can then continue using other tools or provide the final response.
+
+The agent currently allows up to 20 iterations for a single request.
 
 ## Running the Agent
 
@@ -258,41 +330,55 @@ Run the agent with:
 uv run main.py "What files are in the calculator directory?"
 ```
 
+Another example:
+
+```bash
+uv run main.py "Read calculator/pkg/calculator.py"
+```
+
 For verbose output:
 
 ```bash
 uv run main.py "Read calculator/main.py" --verbose
 ```
 
-The agent can decide when to use its available tools. For example, a request such as:
-
-```text
-Read the contents of calculator/pkg/calculator.py
-```
-
-can cause the model to call `get_file_content`.
+Verbose mode displays additional information such as token usage and the final response.
 
 ## Available Tools
 
 ### `get_files_info`
 
-Lists files in a directory and returns their sizes and whether they are directories.
+Lists files and directories inside the permitted working directory.
+
+It returns information such as:
+
+- File name
+- File size
+- Whether the entry is a directory
 
 ### `get_file_content`
 
-Reads a file relative to the working directory. File contents are limited to 10,000 characters.
+Reads the contents of a file relative to the working directory.
+
+File contents are limited to 10,000 characters to prevent very large responses.
 
 ### `write_file`
 
-Writes content to a file and creates missing parent directories when necessary.
+Writes content to a file.
+
+It also creates missing parent directories when necessary.
 
 ### `run_python_file`
 
-Runs a Python file with optional command-line arguments. Execution is limited to the permitted working directory and has a 30-second timeout.
+Runs a Python file with optional command-line arguments.
+
+Python execution is restricted to the permitted working directory and has a 30-second timeout.
 
 ### `get_valid_path`
 
-Validates paths before file operations so the tools cannot access locations outside the permitted working directory.
+Validates paths before file operations.
+
+It prevents the tools from accessing paths outside the permitted working directory.
 
 ## Calculator
 
@@ -329,7 +415,7 @@ uv run calculator/main.py "2 * 3 - 8 / 2 + 5"
 
 ## Testing
 
-Run the calculator tests with:
+Run the calculator tests:
 
 ```bash
 uv run calculator/tests.py
@@ -344,32 +430,80 @@ uv run tests/test_run_python_file.py
 uv run tests/test_write_file.py
 ```
 
-These scripts also test invalid paths, missing files, file truncation, writing restrictions, and Python execution restrictions.
+The tests cover cases such as:
+
+- Invalid paths
+- Missing files
+- File truncation
+- Writing restrictions
+- Python execution restrictions
 
 ## Security Notes
 
-The file tools are intentionally restricted to the `calculator` working directory so the agent cannot read or write anywhere else on the system.
+The file tools are restricted to the `calculator` working directory.
 
-This project restricts file paths, but it is not intended to be a secure sandbox for untrusted code.
+Path validation prevents the agent from using paths that escape the permitted working directory.
+
+The `run_python_file` tool also has a 30-second execution timeout.
+
+However, this project is not a secure sandbox for untrusted code. Python files are executed using the local Python interpreter, so only trusted code should be executed.
 
 ## Model Selection
 
-If you use OpenRouter, choose a model that supports the features required by the agent, especially tool/function calling.
+The model is configured through:
 
-OpenRouter provides a model catalog with capabilities, context windows, pricing, and other model information:
+```env
+LLM_MODEL=provider/model-name
+```
 
-https://openrouter.ai/models
+For NVIDIA:
 
-For NVIDIA, check the current NVIDIA API Catalog because available hosted models can change over time:
+```env
+LLM_PROVIDER=nvidia
+LLM_MODEL=nvidia/nemotron-3-super-120b-a12b
+```
 
-https://build.nvidia.com/
+For OpenRouter:
+
+```env
+LLM_PROVIDER=openrouter
+LLM_MODEL=openrouter/free
+```
+
+If you use OpenRouter, you can browse its current model catalog here:
+
+[OpenRouter Models](https://openrouter.ai/models?utm_source=chatgpt.com)
+
+For NVIDIA models:
+
+[NVIDIA API Catalog](https://build.nvidia.com/?utm_source=chatgpt.com)
+
+Always check the provider's current model capabilities before selecting a model. In particular, the model should support tool/function calling.
 
 ## Why NVIDIA or OpenRouter?
 
-I recommend starting with NVIDIA if you want a simple setup with a hosted NVIDIA model and an OpenAI-compatible API.
+I recommend NVIDIA if you want a simple setup with a hosted NVIDIA model and an OpenAI-compatible API.
 
-OpenRouter is a great alternative when you want to experiment with different models and providers without rebuilding the rest of the agent. You mainly change the API key, base URL, and model name.
+OpenRouter is useful when you want to experiment with different models and providers without rebuilding the rest of the agent.
+
+Because the provider implementation is separated from the agent logic, switching between them only requires changing the configuration in `.env`.
+
+## Limitations
+
+This project is intentionally small and focused on learning the fundamentals of building an AI agent.
+
+Some current limitations include:
+
+- No persistent conversation memory
+- No streaming responses
+- No parallel tool execution
+- Limited error recovery for API failures
+- Only a small number of supported providers
+- Python execution is not a secure sandbox
+- Tool behavior depends on the capabilities of the selected model
 
 ## Notes
 
-This is a learning project, so the implementation is intentionally simple. The agent loop, tool execution, path validation, and calculator are all kept relatively small so the behavior is easy to understand and modify.
+This is a learning project built to explore how LLM tool calling, agent loops, file operations, provider abstraction, and basic security restrictions can work together in Python.
+
+The implementation is intentionally kept relatively small so that the main concepts are easy to understand, modify, and extend.

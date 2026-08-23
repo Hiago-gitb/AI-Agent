@@ -1,24 +1,14 @@
-import os
 import argparse
 import sys
 from dotenv import load_dotenv
-from openai import OpenAI
 from prompts import system_prompt
 from functions.call_function import available_functions, call_function
-
+from providers.factory import create_provider
 
 load_dotenv()
 
-# Load the API key from the environment.
-api_key = os.environ.get("NVIDIA_API_KEY")
-if not api_key or api_key == None:
-    raise RuntimeError("NVIDIA_API_KEY is not set. Check your .env file.")
-
-# Configure the NVIDIA API client through the OpenAI SDK.
-client = OpenAI(
-  base_url = "https://integrate.api.nvidia.com/v1",
-  api_key = api_key,
-)
+# Create the provider selected in the environment.
+provider = create_provider()
 
 # Parse the user's prompt and optional command-line arguments.
 parser = argparse.ArgumentParser(description="Chatbot")
@@ -33,8 +23,7 @@ messages = [
 
 # Allow the model to call tools and continue processing their results.
 for i in range(20):
-    response = client.chat.completions.create(
-        model="nvidia/nemotron-3-super-120b-a12b",
+    response = provider.generate(
         messages = messages,
         tools=available_functions,
     )
