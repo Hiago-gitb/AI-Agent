@@ -7,6 +7,7 @@ class NVIDIAProvider(LLMProvider):
     def __init__(self):
         # Load the NVIDIA API key from the environment.
         api_key = os.environ.get("NVIDIA_API_KEY")
+        model = os.eviron.get("PROVIDER_MODEL")
 
         if not api_key:
             raise RuntimeError(
@@ -19,7 +20,10 @@ class NVIDIAProvider(LLMProvider):
             api_key=api_key,
         )
 
-        self.model = "nvidia/nemotron-3-super-120b-a12b"
+        if not model:
+            self.model = "nvidia/nemotron-3-super-120b-a12b"
+        else:
+            self.model = model
 
     def generate(self, messages, tools):
         # Send the conversation and available tools to the model.

@@ -7,6 +7,7 @@ class OpenRouterProvider(LLMProvider):
     def __init__(self):
         # Load the OpenRouter API key from the environment.
         api_key = os.environ.get("OPENROUTER_API_KEY")
+        model = os.eviron.get("PROVIDER_MODEL")
 
         if not api_key:
             raise RuntimeError(
@@ -19,7 +20,10 @@ class OpenRouterProvider(LLMProvider):
             api_key=api_key,
         )
 
-        self.model = "openrouter/free"
+        if not model:
+            self.model = "openrouter/free"
+        else:
+            self.model = model
 
     def generate(self, messages, tools):
         # Send the conversation and available tools to the model.

@@ -27,7 +27,7 @@ def call_function(tool_call, verbose = False):
     # Extract the function name and arguments from the model's tool call.
     function_name = tool_call.function.name
     function_args = json.loads(tool_call.function.arguments or "{}")
-    function_args["working_directory"] = "./calculator"
+    function_args["working_directory"] = "./workspace"
 
     # Show the current tool call when verbose mode is enabled.
     if verbose:
