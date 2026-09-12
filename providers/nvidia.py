@@ -7,7 +7,7 @@ class NVIDIAProvider(LLMProvider):
     def __init__(self):
         # Load the NVIDIA API key from the environment.
         api_key = os.environ.get("NVIDIA_API_KEY")
-        model = os.eviron.get("PROVIDER_MODEL")
+        model = os.environ.get("PROVIDER_MODEL")
 
         if not api_key:
             raise RuntimeError(
